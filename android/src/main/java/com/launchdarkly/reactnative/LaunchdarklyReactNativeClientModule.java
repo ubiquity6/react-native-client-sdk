@@ -38,6 +38,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import timber.log.Timber;
 
@@ -155,6 +157,8 @@ public class LaunchdarklyReactNativeClientModule extends ReactContextBaseJavaMod
     // Current feature flag listeners
     private Map<String, FeatureFlagChangeListener> listeners = new HashMap<>();
 
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+
     public LaunchdarklyReactNativeClientModule(ReactApplicationContext reactContext) {
         super(reactContext);
     }
@@ -225,7 +229,7 @@ public class LaunchdarklyReactNativeClientModule extends ReactContextBaseJavaMod
         final Application application = (Application) getReactApplicationContext().getApplicationContext();
 
         if (application != null) {
-            Thread background = new Thread(new Runnable() {
+            Runnable runnable = new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -239,9 +243,8 @@ public class LaunchdarklyReactNativeClientModule extends ReactContextBaseJavaMod
                         promise.reject(ERROR_INIT, e);
                     }
                 }
-            });
-
-            background.start();
+            };
+            executorService.submit(runnable);
         } else {
             Timber.e("Couldn't initialize LaunchDarklyModule because the application was null");
             promise.reject(ERROR_INIT, "Couldn't acquire application context");
@@ -800,7 +803,7 @@ public class LaunchdarklyReactNativeClientModule extends ReactContextBaseJavaMod
             promise.reject(ERROR_IDENTIFY, "User could not be built using supplied configuration");
             return;
         }
-        Thread background = new Thread(new Runnable() {
+        Runnable runnable = new Runnable() {
             @Override
             public void run() {
                 try {
@@ -814,8 +817,8 @@ public class LaunchdarklyReactNativeClientModule extends ReactContextBaseJavaMod
                     promise.reject(ERROR_IDENTIFY, "Exception while executing identify");
                 }
             }
-        });
-        background.run();
+        };
+        executorService.submit(runnable);
     }
 
     @ReactMethod
